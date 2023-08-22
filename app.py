@@ -8,6 +8,7 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 
 app = dash.Dash(__name__)
+server = app.server
 
 # Initialize the BigQuery Client
 credentials = service_account.Credentials.from_service_account_file('creds/service_account.json')
@@ -130,4 +131,4 @@ def update_graph(selected_complaint, time_scale):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    server.run(debug=True)
