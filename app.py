@@ -1,11 +1,10 @@
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
 import db_dtypes
 from dash.dependencies import Input, Output
 import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
+from dash import dcc, html
 
 app = dash.Dash(__name__)
 server = app.server
@@ -22,7 +21,17 @@ GROUP BY complaint_description
 ORDER BY count DESC
 LIMIT 20;
 '''
-top_complaints = client.query(sql).to_dataframe()
+job_config = bigquery.QueryJobConfig()
+# Set any required configurations for job_config, if needed
+
+query_job = client.query(sql, job_config=job_config)
+
+try:
+    results = query_job.result()
+except TypeError:
+    results = query_job.result(timeout=None)
+top_complaints = results.to_dataframe()
+
 
 app.layout = html.Div(style={
     'textAlign': 'center',
@@ -85,11 +94,11 @@ app.layout = html.Div(style={
 def update_graph(selected_complaint, time_scale):
     if time_scale == 'daily':
         sql = '''
-        SELECT complaint_description, DATE(created_date) AS date, COUNT(complaint_description) AS count
-        FROM `bigquery-public-data.austin_311.311_service_requests`
-        WHERE complaint_description = "{}"
-        GROUP BY complaint_description, date
-        ORDER BY date;
+            SELECT complaint_description, DATE(created_date) AS date, COUNT(complaint_description) AS count
+            FROM `bigquery-public-data.austin_311.311_service_requests`
+            WHERE complaint_description = "{}"
+            GROUP BY complaint_description, date
+            ORDER BY date;
         '''.format(selected_complaint)
         date_column_based_on_time_scale = 'date'
 
@@ -101,20 +110,19 @@ def update_graph(selected_complaint, time_scale):
             WHERE complaint_description = "{}"
             GROUP BY complaint_description, year_week
             ORDER BY year_week;
-            '''.format(selected_complaint)
+        '''.format(selected_complaint)
 
         date_column_based_on_time_scale = 'year_week'
 
     else:
         sql = '''
-        SELECT complaint_description, CONCAT(CAST(EXTRACT(YEAR FROM created_date) AS STRING), '-', LPAD(CAST(EXTRACT(MONTH FROM created_date) AS STRING), 2, '0')) AS year_month, COUNT(complaint_description) AS count
-        FROM `bigquery-public-data.austin_311.311_service_requests`
-        WHERE complaint_description = "{}"
-        GROUP BY complaint_description, year_month
-        ORDER BY year_month;
+            SELECT complaint_description, CONCAT(CAST(EXTRACT(YEAR FROM created_date) AS STRING), '-', LPAD(CAST(EXTRACT(MONTH FROM created_date) AS STRING), 2, '0')) AS year_month, COUNT(complaint_description) AS count
+            FROM `bigquery-public-data.austin_311.311_service_requests`
+            WHERE complaint_description = "{}"
+            GROUP BY complaint_description, year_month
+            ORDER BY year_month;
         '''.format(selected_complaint)
         date_column_based_on_time_scale = 'year_month'
-
 
     df = client.query(sql).to_dataframe()
 
