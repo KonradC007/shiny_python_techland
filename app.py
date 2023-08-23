@@ -139,4 +139,7 @@ def update_graph(selected_complaint, time_scale):
 
 
 if __name__ == '__main__':
-    server.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("DEBUG", False)
+    server.run(debug=debug, host='0.0.0.0', port=port)
